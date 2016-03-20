@@ -1,6 +1,7 @@
 # ---------------------------------------------------------------------------
 # Proximity_Suit_Tl.py
 # Created on: 2015-03-09
+# Last modified: 3/20/16
 # Created By: David Wasserman
 # Usage: Proximity_Suit_Tl <In_Reference_Suit > <In_Suit_Var> <Out_Suit_Prox> 
 # Description: 
@@ -38,7 +39,60 @@ In_Suit_Var_Raw = arcpy.GetParameterAsText(
         1)  # is the variable of interest to the reference layer-what the reclassified raster is based on
 Out_Suit_Prox_Raw = arcpy.GetParameterAsText(2)  # destination of the output suitability raster input
 
-def do_analysis(In_Reference_Suit,In_Suit_Var,Out_Suit_Prox ):
+Invert_Ra_Value = arcpy.GetParameter(3)  # Boolean value to invert the raster.
+
+
+def arcToolReport(function=None, arcToolMessageBool=False, arcProgressorBool=False):
+    """This decorator function is designed to be used as a wrapper with other GIS functions to enable basic try and except
+     reporting (if function fails it will report the name of the function that failed and its arguments. If a report
+      boolean is true the function will report inputs and outputs of a function.-David Wasserman"""
+
+    def arcToolReport_Decorator(function):
+        def funcWrapper(*args, **kwargs):
+            try:
+                funcResult = function(*args, **kwargs)
+                if arcToolMessageBool:
+                    arcpy.AddMessage("Function:{0}".format(str(function.__name__)))
+                    arcpy.AddMessage("     Input(s):{0}".format(str(args)))
+                    arcpy.AddMessage("     Ouput(s):{0}".format(str(funcResult)))
+                if arcProgressorBool:
+                    arcpy.SetProgressorLabel("Function:{0}".format(str(function.__name__)))
+                    arcpy.SetProgressorLabel("     Input(s):{0}".format(str(args)))
+                    arcpy.SetProgressorLabel("     Ouput(s):{0}".format(str(funcResult)))
+                return funcResult
+            except Exception as e:
+                arcpy.AddMessage(
+                        "{0} - function failed -|- Function arguments were:{1}.".format(str(function.__name__),
+                                                                                        str(args)))
+                print(
+                "{0} - function failed -|- Function arguments were:{1}.".format(str(function.__name__), str(args)))
+                print(e.args[0])
+
+        return funcWrapper
+
+    if not function:  # User passed in a bool argument
+        def waiting_for_function(function):
+            return arcToolReport_Decorator(function)
+
+        return waiting_for_function
+    else:
+        return arcToolReport_Decorator(function)
+
+
+@arcToolReport
+def invertSuitValue(value, invertBool, maxValue=9):
+    """Inverts suitability values passed to it if a boolean is checked. """
+    try:
+        if invertBool:
+            return ((maxValue + 1) - value)
+        else:
+            return value
+    except:
+        return value
+
+
+@arcToolReport
+def do_analysis(In_Reference_Suit, In_Suit_Var, Out_Suit_Prox, Invert_Boolean):
     try:
         # Path setup-temp workspace: You can edit the script to use this if you want, but I defer to defaults.
         # tempFC=os.path.join(arcpy.env.scratchGDB,"tempFC")# for a temporary data
@@ -92,16 +146,20 @@ def do_analysis(In_Reference_Suit,In_Suit_Var,Out_Suit_Prox ):
         arcpy.SetProgressorPosition()
         Max_Value_Result = arcpy.GetRasterProperties_management(EuDist_Ra_wStats, "MAXIMUM")
         Max_Ra_Value = float(Max_Value_Result.getOutput(0))
-        arcpy.AddMessage("Maximum Raster Value of {0} is used as the final value in the remap table.".format(Max_Ra_Value))
+        arcpy.AddMessage(
+                "Maximum Raster Value of {0} is used as the final value in the remap table.".format(Max_Ra_Value))
 
         # Remap List creation
-        myremap = RemapRange([[0, Mean, 9], [Mean, Mean + (Qrt_StD), 8], [Mean + (Qrt_StD), Mean + (Qrt_StD * 2), 7],
-                              [Mean + (Qrt_StD * 2), Mean + (Qrt_StD * 3), 6],
-                              [Mean + (Qrt_StD * 3), Mean + (Qrt_StD * 4), 5],
-                              [Mean + (Qrt_StD * 4), Mean + (Qrt_StD * 5), 4],
-                              [Mean + (Qrt_StD * 5), Mean + (Qrt_StD * 6), 3],
-                              [Mean + (Qrt_StD * 6), Mean + (Qrt_StD * 7), 2], [Mean + (Qrt_StD * 7), (Max_Ra_Value + 1),
-                                                                                1]])  # float("inf") does not work so this is the short term solution
+        myremap = RemapRange([[0, Mean, invertSuitValue(9, Invert_Boolean)],
+                              [Mean, Mean + (Qrt_StD), invertSuitValue(8, Invert_Boolean)],
+                              [Mean + (Qrt_StD), Mean + (Qrt_StD * 2),invertSuitValue(7,Invert_Boolean)],
+                              [Mean + (Qrt_StD * 2), Mean + (Qrt_StD * 3), invertSuitValue(6,Invert_Boolean)],
+                              [Mean + (Qrt_StD * 3), Mean + (Qrt_StD * 4), invertSuitValue(5,Invert_Boolean)],
+                              [Mean + (Qrt_StD * 4), Mean + (Qrt_StD * 5), invertSuitValue(4,Invert_Boolean)],
+                              [Mean + (Qrt_StD * 5), Mean + (Qrt_StD * 6), invertSuitValue(3,Invert_Boolean)],
+                              [Mean + (Qrt_StD * 6), Mean + (Qrt_StD * 7), invertSuitValue(2,Invert_Boolean)],
+                              [Mean + (Qrt_StD * 7), (Max_Ra_Value + 1), invertSuitValue(1,Invert_Boolean)]])
+                                # float("inf") does not work so this is the short term solution
 
         # Process: Reclassify
         arcpy.SetProgressorLabel("Starting Data Driven Reclassification...")
@@ -116,10 +174,11 @@ def do_analysis(In_Reference_Suit,In_Suit_Var,Out_Suit_Prox ):
         arcpy.AddMessage("Final Reclassification: {0}".format(myremap))
         arcpy.ResetProgressor()
         arcpy.Delete_management(Zonal_Stat_Prox)  # delete temporary table- edit script if you want to save it.
-    except Exception as e:
-        print e.args[0]
-    except:
-        arcpy.GetMessages(2)
+    except arcpy.ExecuteError:
         print(arcpy.GetMessages(2))
+    except Exception as e:
+        print(e.args[0])
 
-do_analysis(In_Reference_Suit_Raw,In_Suit_Var_Raw,Out_Suit_Prox_Raw)
+
+if __name__ == '__main__':
+    do_analysis(In_Reference_Suit_Raw, In_Suit_Var_Raw, Out_Suit_Prox_Raw, Invert_Ra_Value)
