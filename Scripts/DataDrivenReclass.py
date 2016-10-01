@@ -92,7 +92,7 @@ def invertSuitValue(value, invertBool, maxValue=9):
 
 
 @arcToolReport
-def do_analysis(In_Reference_Suit, In_Suit_Var, Out_Suit_Prox, Invert_Boolean):
+def data_driven_raster_reclassify(In_Reference_Suit, In_Suit_Var, Out_Suit_Prox, Invert_Boolean):
     try:
         # Path setup-temp workspace: You can edit the script to use this if you want, but I defer to defaults.
         # tempFC=os.path.join(arcpy.env.scratchGDB,"tempFC")# for a temporary data
@@ -181,4 +181,4 @@ def do_analysis(In_Reference_Suit, In_Suit_Var, Out_Suit_Prox, Invert_Boolean):
 
 
 if __name__ == '__main__':
-    do_analysis(In_Reference_Suit_Raw, In_Suit_Var_Raw, Out_Suit_Prox_Raw, Invert_Ra_Value)
+    data_driven_raster_reclassify(In_Reference_Suit_Raw, In_Suit_Var_Raw, Out_Suit_Prox_Raw, Invert_Ra_Value)
