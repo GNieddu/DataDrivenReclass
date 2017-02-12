@@ -41,25 +41,23 @@ Out_Suit_Prox_Raw = arcpy.GetParameterAsText(2)  # destination of the output sui
 
 Invert_Ra_Value = arcpy.GetParameter(3)  # Boolean value to invert the raster.
 
-
-def arcToolReport(function=None, arcToolMessageBool=False, arcProgressorBool=False):
+def arc_tool_report(function=None, arc_tool_message_bool=False, arc_progressor_bool=False):
     """This decorator function is designed to be used as a wrapper with other GIS functions to enable basic try and except
      reporting (if function fails it will report the name of the function that failed and its arguments. If a report
       boolean is true the function will report inputs and outputs of a function.-David Wasserman"""
-
-    def arcToolReport_Decorator(function):
-        def funcWrapper(*args, **kwargs):
+    def arc_tool_report_decorator(function):
+        def func_wrapper(*args, **kwargs):
             try:
-                funcResult = function(*args, **kwargs)
-                if arcToolMessageBool:
+                func_result = function(*args, **kwargs)
+                if arc_tool_message_bool:
                     arcpy.AddMessage("Function:{0}".format(str(function.__name__)))
                     arcpy.AddMessage("     Input(s):{0}".format(str(args)))
-                    arcpy.AddMessage("     Ouput(s):{0}".format(str(funcResult)))
-                if arcProgressorBool:
+                    arcpy.AddMessage("     Ouput(s):{0}".format(str(func_result)))
+                if arc_progressor_bool:
                     arcpy.SetProgressorLabel("Function:{0}".format(str(function.__name__)))
                     arcpy.SetProgressorLabel("     Input(s):{0}".format(str(args)))
-                    arcpy.SetProgressorLabel("     Ouput(s):{0}".format(str(funcResult)))
-                return funcResult
+                    arcpy.SetProgressorLabel("     Ouput(s):{0}".format(str(func_result)))
+                return func_result
             except Exception as e:
                 arcpy.AddMessage(
                         "{0} - function failed -|- Function arguments were:{1}.".format(str(function.__name__),
@@ -67,20 +65,18 @@ def arcToolReport(function=None, arcToolMessageBool=False, arcProgressorBool=Fal
                 print(
                 "{0} - function failed -|- Function arguments were:{1}.".format(str(function.__name__), str(args)))
                 print(e.args[0])
-
-        return funcWrapper
-
+        return func_wrapper
     if not function:  # User passed in a bool argument
         def waiting_for_function(function):
-            return arcToolReport_Decorator(function)
-
+            return arc_tool_report_decorator(function)
         return waiting_for_function
     else:
-        return arcToolReport_Decorator(function)
+        return arc_tool_report_decorator(function)
 
 
-@arcToolReport
-def invertSuitValue(value, invertBool, maxValue=9):
+
+@arc_tool_report
+def invert_suitability_value(value, invertBool, maxValue=9):
     """Inverts suitability values passed to it if a boolean is checked. """
     try:
         if invertBool:
@@ -91,7 +87,7 @@ def invertSuitValue(value, invertBool, maxValue=9):
         return value
 
 
-@arcToolReport
+@arc_tool_report
 def data_driven_raster_reclassify(In_Reference_Suit, In_Suit_Var, Out_Suit_Prox, Invert_Boolean):
     try:
         # Path setup-temp workspace: You can edit the script to use this if you want, but I defer to defaults.
@@ -150,15 +146,15 @@ def data_driven_raster_reclassify(In_Reference_Suit, In_Suit_Var, Out_Suit_Prox,
                 "Maximum Raster Value of {0} is used as the final value in the remap table.".format(Max_Ra_Value))
 
         # Remap List creation
-        myremap = RemapRange([[0, Mean, invertSuitValue(9, Invert_Boolean)],
-                              [Mean, Mean + (Qrt_StD), invertSuitValue(8, Invert_Boolean)],
-                              [Mean + (Qrt_StD), Mean + (Qrt_StD * 2),invertSuitValue(7,Invert_Boolean)],
-                              [Mean + (Qrt_StD * 2), Mean + (Qrt_StD * 3), invertSuitValue(6,Invert_Boolean)],
-                              [Mean + (Qrt_StD * 3), Mean + (Qrt_StD * 4), invertSuitValue(5,Invert_Boolean)],
-                              [Mean + (Qrt_StD * 4), Mean + (Qrt_StD * 5), invertSuitValue(4,Invert_Boolean)],
-                              [Mean + (Qrt_StD * 5), Mean + (Qrt_StD * 6), invertSuitValue(3,Invert_Boolean)],
-                              [Mean + (Qrt_StD * 6), Mean + (Qrt_StD * 7), invertSuitValue(2,Invert_Boolean)],
-                              [Mean + (Qrt_StD * 7), (Max_Ra_Value + 1), invertSuitValue(1,Invert_Boolean)]])
+        myremap = RemapRange([[0, Mean, invert_suitability_value(9, Invert_Boolean)],
+                              [Mean, Mean + (Qrt_StD), invert_suitability_value(8, Invert_Boolean)],
+                              [Mean + (Qrt_StD), Mean + (Qrt_StD * 2), invert_suitability_value(7, Invert_Boolean)],
+                              [Mean + (Qrt_StD * 2), Mean + (Qrt_StD * 3), invert_suitability_value(6, Invert_Boolean)],
+                              [Mean + (Qrt_StD * 3), Mean + (Qrt_StD * 4), invert_suitability_value(5, Invert_Boolean)],
+                              [Mean + (Qrt_StD * 4), Mean + (Qrt_StD * 5), invert_suitability_value(4, Invert_Boolean)],
+                              [Mean + (Qrt_StD * 5), Mean + (Qrt_StD * 6), invert_suitability_value(3, Invert_Boolean)],
+                              [Mean + (Qrt_StD * 6), Mean + (Qrt_StD * 7), invert_suitability_value(2, Invert_Boolean)],
+                              [Mean + (Qrt_StD * 7), (Max_Ra_Value + 1), invert_suitability_value(1, Invert_Boolean)]])
                                 # float("inf") does not work so this is the short term solution
 
         # Process: Reclassify
